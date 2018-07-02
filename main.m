@@ -37,10 +37,20 @@ image_list = {
     'wolf_bw_small.png'
     'zipper_bw_small.png'
 };
+
+%%
+imagedir = 'D:\ECoG\KyotoNaming\Rick\stimuli\Pictures_Snodgrass';
+x = dir(imagedir);
+animate = [0,0,1,0,0,1,1,1,0,1,0,1,0,1,1,0,0,0,0,1,1,1,0,0,1,1,1,0,0,1,1,1,0,1,0,1,1,1,1,0,1,1,0,0,0,0,0,1,0,1,0,0,1,1,1,0,1,0,1,0,1,1,1,1,0,1,0,1,1,1,1,1,0,0,0,0,0,1,1,0,1,1,0,1,0,1,0,1,0,0,0,0,0,0,1,0,0,0,0,1];
+[~,anisort] = sort(animate);
+z = ~cellfun('isempty', regexp({x.name},'.*.bmp$'));
+image_list = {x(z).name};
+
 IMAGES = cell(numel(image_list),1);
 for i = 1:numel(IMAGES)
-    IMAGES{i} = imread(fullfile('png_600',image_list{i}), 'png');
+    IMAGES{i} = imresize(imread(fullfile(imagedir,image_list{i}), 'bmp'),[150,150]);
 end
+
 
 %%
 nw = 5;
@@ -60,31 +70,30 @@ end
 getWindow = @(y) cell2mat(cellfun(@(x) x(windows{y}), IMAGES, 'UniformOutput', false)');
 
 %%
-addpath('/Users/Chris/Documents/MATLAB/Toolboxes/FastICA_25');
-
-IC = cell(nw);
-A = IC;
-W = IC;
-for i = 1:numel(IC)
+% addpath('/Users/Chris/Documents/MATLAB/Toolboxes/FastICA_25');
+addpath('C:\Users\mbmhscc4\MATLAB\Toolboxes\FastICA_25');
+X = zeros(900, 100 * numel(windows));
+cur = 0;
+for i = 1:numel(windows)
     disp(i)
-    X = getWindow(i);
+    a = cur + 1;
+    b = cur + 100;
+    cur = b;
+    X(:,a:b) = getWindow(i);
 %     disp(tabulate(X(:)))
-    try
-        [IC{i},A{i},W{i}] = fastica(X,'numOfIC',100);
-    catch
-        % nothing
-    end
 end
+[IC,A,W] = fastica(X,'numOfIC',900);
+IC = mat2cell(IC, 900, repmat(100,1,numel(windows)));
+
 %%
 getImg = @(X,y) cell2mat(cellfun(@(x) reshape(x(:,y),n,n), X, 'UniformOutput', 0));
 IMAGE_RECON = cell(numel(image_list),1);
 X = cell(numel(windows),1);
-d = 20;
 for i = 1:numel(windows)
     w = windows{i};
-    X{i} = A{i}*IC{i};
+    X{i} = A*IC{i};
 end
-X{10} = zeros(size(X{1}));
+% X{10} = zeros(size(X{1}));
 for j = 1:numel(IMAGE_RECON)
     IMAGE_RECON{j} = getImg(reshape(X,nw,nw),j);
 end
@@ -122,3 +131,5 @@ for j = 1:numel(IMAGE_RECON)
     IMAGE_RECON{j} = getImg(reshape(X,nw,nw),j);
 end
 for i = 1:36, subplot(6,6,i); imagesc(IMAGE_RECON{i}); end
+
+imagesc(squareform(pdist(tmp(anisort,:))))
